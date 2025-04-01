@@ -5,6 +5,7 @@
 #include <cstring>
 #include <chrono>
 #include <cmath>
+#include "Shape.cpp"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -13,7 +14,6 @@ int drawCircle(float x, float y, float radius, unsigned int accuracy, float* ver
 
 // settings
 #define PI 3.14159265358979323846
-#define VERTEX_COORD_TOTAL 2
 #define ACCURACY 64
 const unsigned int SCR_WIDTH = 1920;
 const unsigned int SCR_HEIGHT = 1080;
@@ -107,46 +107,20 @@ int main()
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
-    unsigned int VBO[2], VAO[2], EBO[2];
-    glGenVertexArrays(2, VAO);
-    glGenBuffers(2, VBO);
-    glGenBuffers(2, EBO);
-    float circ1[(ACCURACY+1) * VERTEX_COORD_TOTAL];
-    float circ2[(ACCURACY+1) * VERTEX_COORD_TOTAL];
-    unsigned int indices1[ACCURACY * VERTEX_COORD_TOTAL];
-    unsigned int indices2[ACCURACY * VERTEX_COORD_TOTAL];
-    drawCircle(0.25f, 0.0f, 0.5f,ACCURACY,circ1, indices1);
-    drawCircle(-0.25f, 0.0f, 0.5f,ACCURACY,circ2, indices2);
     
-    // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-    glBindVertexArray(VAO[0]);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
-    glBufferData(GL_ARRAY_BUFFER, (((ACCURACY+1) * VERTEX_COORD_TOTAL)) * sizeof(float), circ1, GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[0]);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER,(ACCURACY*VERTEX_COORD_TOTAL)*sizeof(unsigned int), indices1, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, VERTEX_COORD_TOTAL , GL_FLOAT, GL_FALSE, VERTEX_COORD_TOTAL * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
+    std::vector<float> vertices = {
+        0.5f,  0.5f, 0.0f,  // top right
+         0.5f, -0.5f, 0.0f,  // bottom right
+        -0.5f, -0.5f, 0.0f,  // bottom left
+        -0.5f,  0.5f, 0.0f   // top left
+   };
 
-    //Circle 2
-    glBindVertexArray(VAO[1]);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
-    glBufferData(GL_ARRAY_BUFFER, (((ACCURACY+1) * VERTEX_COORD_TOTAL)) * sizeof(float), circ2, GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[1]);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER,(ACCURACY*VERTEX_COORD_TOTAL)*sizeof(unsigned int), indices2, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, VERTEX_COORD_TOTAL , GL_FLOAT, GL_FALSE, VERTEX_COORD_TOTAL * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
-    glBindBuffer(GL_ARRAY_BUFFER, 0); 
-
-    // remember: do NOT unbind the EBO while a VAO is active as the bound element buffer object IS stored in the VAO; keep the EBO bound.
-    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-    // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
-    // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
-    glBindVertexArray(0); 
-
-
+    std::vector<unsigned int> indices = {  // note that we start from 0!
+        0, 1, 3,   // first triangle
+        1, 2, 3    // second triangle
+    };  
+    Square square1 = Square(0, {0.0f,0.0f}, {0.0f,0.0f,0.0f}, 1.0f);
+    Shape shape1 = Shape(0, vertices, indices, {0.0f, 0.0f, 0.0f}, 2);
     // uncomment this call to draw in wireframe polygons.
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
@@ -161,6 +135,7 @@ int main()
     int bounces = 0;
     accStart = std::chrono::system_clock::now();
     animationStart = std::chrono::system_clock::now();
+
     while (!glfwWindowShouldClose(window))
     {
         accEnd = std::chrono::system_clock::now();
@@ -181,8 +156,8 @@ int main()
             acc += 0.007f;
         }
 
-
-       if(std::chrono::duration<double>(accEnd-animationStart).count() > 10){
+        
+    //   if(std::chrono::duration<double>(accEnd-animationStart).count() > 10){
         //    float dis = 0.0f;
         //    float vel = 0.0f;
         //    float acc = 0.0f;
@@ -198,35 +173,19 @@ int main()
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        //Draw circle 1
-        drawCircle(-0.25f, 0.75f-dis, 0.05f,ACCURACY,circ1, indices1);
-        drawCircle(0.25f, 0.0f, 0.25f,ACCURACY,circ2, indices2);
-        glBindVertexArray(VAO[0]); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
-        glBindBuffer(GL_ARRAY_BUFFER,VBO[0]);
-        glBufferSubData(GL_ARRAY_BUFFER, 0,(((ACCURACY+1) * VERTEX_COORD_TOTAL)) * sizeof(float), circ1);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[0]);
-        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER,0,(ACCURACY*VERTEX_COORD_TOTAL)*sizeof(unsigned int), indices1);
-        glDrawElements(GL_TRIANGLES, ACCURACY*VERTEX_COORD_TOTAL, GL_UNSIGNED_INT, 0);
-
-        glBindVertexArray(VAO[1]); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
-        glBindBuffer(GL_ARRAY_BUFFER,VBO[1]);
-        glBufferSubData(GL_ARRAY_BUFFER, 0,(((ACCURACY+1) * VERTEX_COORD_TOTAL)) * sizeof(float), circ2);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[1]);
-        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER,0,(ACCURACY*VERTEX_COORD_TOTAL)*sizeof(unsigned int), indices2);
-        glDrawElements(GL_TRIANGLES, ACCURACY*VERTEX_COORD_TOTAL, GL_UNSIGNED_INT, 0);
-
         glUseProgram(shaderProgram);
+        //Draw circle 1
+        square1.render();
+        // shape1.render();
  
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
         glfwPollEvents();
-    }
+   }
 
     // optional: de-allocate all resources once they've outlived their purpose:
     // ------------------------------------------------------------------------
-    glDeleteVertexArrays(2, VAO);
-    glDeleteBuffers(2, VBO);
     //glDeleteBuffers(1, &EBO);
     glDeleteProgram(shaderProgram);
 
@@ -269,26 +228,25 @@ float* drawTriangle(float x, float y, float width, float height){
     return arr;
 }
 
-int drawCircle(float x, float y, float radius, unsigned int accuracy, float* vertices, unsigned int* indices){
-    if(x > 1.0f || x < -1.0f || y > 1.0f || y < -1.0f || radius > 1.0f || radius < -1.0f){
-        return false;
-    }
-
-    float angleStep = 2 * PI / accuracy; 
-    vertices[0] = x;
-    vertices[1] = y;
-    vertices[2] = 0.0f;
-    for(int i = 0; i < accuracy; i++){
-        float angle =  i * angleStep;
-        vertices[(VERTEX_COORD_TOTAL*(i+1))] = x + radius * cos(angle);
-        vertices[(VERTEX_COORD_TOTAL*(i+1))+1] = y + radius * sin(angle);
-        vertices[(VERTEX_COORD_TOTAL*(i+1))+2] = 0.0f;
-    }
-    for(int i = 0; i < accuracy; i++){
-        indices[i*VERTEX_COORD_TOTAL] = 0;
-        indices[(i*VERTEX_COORD_TOTAL)+1] = i + 1;
-        //indices[(i*VERTEX_COORD_TOTAL)+2] = i + 2;
-        indices[(i * VERTEX_COORD_TOTAL) + 2] = (i + 1) % accuracy + 1;
-    }
-    return true; 
-}
+// int drawCircle(float x, float y, float radius, unsigned int accuracy, float* vertices, unsigned int* indices){ if(x > 1.0f || x < -1.0f || y > 1.0f || y < -1.0f || radius > 1.0f || radius < -1.0f){
+//         return false;
+//     }
+//
+//     float angleStep = 2 * PI / accuracy; 
+//     vertices[0] = x;
+//     vertices[1] = y;
+//     vertices[2] = 0.0f;
+//     for(int i = 0; i < accuracy; i++){
+//         float angle =  i * angleStep;
+//         vertices[(VERTEX_COORD_TOTAL*(i+1))] = x + radius * cos(angle);
+//         vertices[(VERTEX_COORD_TOTAL*(i+1))+1] = y + radius * sin(angle);
+//         vertices[(VERTEX_COORD_TOTAL*(i+1))+2] = 0.0f;
+//     }
+//     for(int i = 0; i < accuracy; i++){
+//         indices[i*VERTEX_COORD_TOTAL] = 0;
+//         indices[(i*VERTEX_COORD_TOTAL)+1] = i + 1;
+//         //indices[(i*VERTEX_COORD_TOTAL)+2] = i + 2;
+//         indices[(i * VERTEX_COORD_TOTAL) + 2] = (i + 1) % accuracy + 1;
+//     }
+//     return true; 
+// }
