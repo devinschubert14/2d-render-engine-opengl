@@ -13,7 +13,6 @@ float* drawTriangle(float x, float y, float width, float height);
 int drawCircle(float x, float y, float radius, unsigned int accuracy, float* vertices, unsigned int* indices);
 
 // settings
-#define PI 3.14159265358979323846
 #define ACCURACY 64
 const unsigned int SCR_WIDTH = 1920;
 const unsigned int SCR_HEIGHT = 1080;
@@ -25,10 +24,11 @@ const char *vertexShaderSource = "#version 330 core\n"
     "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
     "}\0";
 const char *fragmentShaderSource = "#version 330 core\n"
+    "uniform vec4 aColor;\n"
     "out vec4 FragColor;\n"
     "void main()\n"
     "{\n"
-    "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+    "   FragColor = vec4(aColor);\n"
     "}\n\0";
 
 int main()
@@ -108,19 +108,9 @@ int main()
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
     
-    std::vector<float> vertices = {
-        0.5f,  0.5f, 0.0f,  // top right
-         0.5f, -0.5f, 0.0f,  // bottom right
-        -0.5f, -0.5f, 0.0f,  // bottom left
-        -0.5f,  0.5f, 0.0f   // top left
-   };
-
-    std::vector<unsigned int> indices = {  // note that we start from 0!
-        0, 1, 3,   // first triangle
-        1, 2, 3    // second triangle
-    };  
-    Square square1 = Square(0, {0.0f,0.0f}, {0.0f,0.0f,0.0f}, 1.0f);
-    Shape shape1 = Shape(0, vertices, indices, {0.0f, 0.0f, 0.0f}, 2);
+    Square square1 = Square(shaderProgram, {-0.5f,0.0f}, hex2rgb(0xFFA500), 0.5f);
+    Triangle triangle1 = Triangle(shaderProgram, {0.5f,0.0f}, {0.0f,0.0f,0.0f}, 0.5f);
+    Circle circle1 = Circle(shaderProgram, {0.5f,0.0f}, hex2rgb(0x90EE90), 0.25f, 64);
     // uncomment this call to draw in wireframe polygons.
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
@@ -157,13 +147,13 @@ int main()
         }
 
         
-    //   if(std::chrono::duration<double>(accEnd-animationStart).count() > 10){
-        //    float dis = 0.0f;
-        //    float vel = 0.0f;
-        //    float acc = 0.0f;
-        //    int bounces = 0;
-        //    animationStart = std::chrono::system_clock::now();
-        //}
+      if(std::chrono::duration<double>(accEnd-animationStart).count() > 10){
+           float dis = 0.0f;
+           float vel = 0.0f;
+           float acc = 0.0f;
+           int bounces = 0;
+           animationStart = std::chrono::system_clock::now();
+        }
 
         // input
         // -----
@@ -174,10 +164,12 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(shaderProgram);
-        //Draw circle 1
+
+        // circle1 = Circle(shaderProgram, {0.5f,0.0f}, hex2rgb(0x90EE90), 0.25f, 64);
+    
         square1.render();
-        // shape1.render();
- 
+        circle1.render();
+
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
@@ -212,41 +204,3 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     glViewport(0, 0, width, height);
 }
 
-float* drawTriangle(float x, float y, float width, float height){
-    if(x > 1.0 || x < -1.0 || y > 1.0 || y < -1.0 || height > 1.0 || height < -1.0){
-        exit(1);
-    }
-
-    float v1[] = {x, y+(height/2), 0.0f};
-    float v2[] = {x-(height/2), y-(height/2), 0.0f};
-    float v3[] = {x+(height/2), y-(height/2), 0.0f};
-   
-    float* arr = (float *)malloc(9 * sizeof(float));
-    memcpy(&arr[0], v1, sizeof(v1));
-    memcpy(&arr[3], v2, sizeof(v2));
-    memcpy(&arr[6], v3, sizeof(v3));
-    return arr;
-}
-
-// int drawCircle(float x, float y, float radius, unsigned int accuracy, float* vertices, unsigned int* indices){ if(x > 1.0f || x < -1.0f || y > 1.0f || y < -1.0f || radius > 1.0f || radius < -1.0f){
-//         return false;
-//     }
-//
-//     float angleStep = 2 * PI / accuracy; 
-//     vertices[0] = x;
-//     vertices[1] = y;
-//     vertices[2] = 0.0f;
-//     for(int i = 0; i < accuracy; i++){
-//         float angle =  i * angleStep;
-//         vertices[(VERTEX_COORD_TOTAL*(i+1))] = x + radius * cos(angle);
-//         vertices[(VERTEX_COORD_TOTAL*(i+1))+1] = y + radius * sin(angle);
-//         vertices[(VERTEX_COORD_TOTAL*(i+1))+2] = 0.0f;
-//     }
-//     for(int i = 0; i < accuracy; i++){
-//         indices[i*VERTEX_COORD_TOTAL] = 0;
-//         indices[(i*VERTEX_COORD_TOTAL)+1] = i + 1;
-//         //indices[(i*VERTEX_COORD_TOTAL)+2] = i + 2;
-//         indices[(i * VERTEX_COORD_TOTAL) + 2] = (i + 1) % accuracy + 1;
-//     }
-//     return true; 
-// }
