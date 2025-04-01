@@ -1,5 +1,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include <iostream>
 #include <cstring>
@@ -19,9 +22,10 @@ const unsigned int SCR_HEIGHT = 1080;
 
 const char *vertexShaderSource = "#version 330 core\n"
     "layout (location = 0) in vec3 aPos;\n"
+    "uniform mat4 transform;\n"
     "void main()\n"
     "{\n"
-    "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+    "   gl_Position = transform * vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
     "}\0";
 const char *fragmentShaderSource = "#version 330 core\n"
     "uniform vec4 aColor;\n"
@@ -126,6 +130,7 @@ int main()
     accStart = std::chrono::system_clock::now();
     animationStart = std::chrono::system_clock::now();
 
+    //circle1.move();
     while (!glfwWindowShouldClose(window))
     {
         accEnd = std::chrono::system_clock::now();
@@ -147,13 +152,13 @@ int main()
         }
 
         
-      if(std::chrono::duration<double>(accEnd-animationStart).count() > 10){
-           float dis = 0.0f;
-           float vel = 0.0f;
-           float acc = 0.0f;
-           int bounces = 0;
-           animationStart = std::chrono::system_clock::now();
-        }
+      // if(std::chrono::duration<double>(accEnd-animationStart).count() > 10){
+      //      float dis = 0.0f;
+      //      float vel = 0.0f;
+      //      float acc = 0.0f;
+      //      int bounces = 0;
+      //      animationStart = std::chrono::system_clock::now();
+      //   }
 
         // input
         // -----
@@ -166,7 +171,7 @@ int main()
         glUseProgram(shaderProgram);
 
         // circle1 = Circle(shaderProgram, {0.5f,0.0f}, hex2rgb(0x90EE90), 0.25f, 64);
-    
+         
         square1.render();
         circle1.render();
 

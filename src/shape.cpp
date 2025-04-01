@@ -2,6 +2,9 @@
 #include <GLFW/glfw3.h>
 #include <vector>
 #include <cmath>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #define PI 3.14159265358979323846
 
@@ -35,12 +38,14 @@ class Shape{
         unsigned int vao, vbo, ebo;
         unsigned int numElements;
         unsigned int numComponents;
+        glm::mat4 trans;
         Shape(unsigned int shader, std::vector<float> vertices, std::vector<unsigned int> indices, RGB color, int numElements);
         ~Shape();
         void createVAO(unsigned int shader);
         void createVBO();
         void createEBO();
         void render();
+        void move();
 };
 
 Shape::Shape(unsigned int shader, std::vector<float> vertices, std::vector<unsigned int> indices, RGB color, int numElements){
@@ -57,6 +62,8 @@ Shape::Shape(unsigned int shader, std::vector<float> vertices, std::vector<unsig
     this->numElements = numElements;
 
     this->createVAO(shader);
+
+    this->trans = glm::mat4(1.0f);
 }
 
 Shape::~Shape(){
@@ -93,11 +100,20 @@ void Shape::render(){
     int colorLocation = glGetUniformLocation(this->shader, "aColor"); 
     glUniform4f(colorLocation, color.r, color.g, color.b, 1.0f);
 
+    int transformLocation = glGetUniformLocation(this->shader, "transform"); 
+    glUniformMatrix4fv(transformLocation, 1, GL_FALSE, glm::value_ptr(this->trans));
+
     glDrawElements(GL_TRIANGLES, this->indices.size(), GL_UNSIGNED_INT, 0);
 
     glBindVertexArray(0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void Shape::move(){
+    this->trans = glm::mat4(1.0f);
+    this->trans = glm::rotate(trans, glm::radians(90.0f), glm::vec3(0.0,0.0,1.0));
+    this->trans = glm::scale(trans, glm::vec3(0.5,0.5,0.5));
 }
 
 class Square : public Shape{
