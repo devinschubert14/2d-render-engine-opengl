@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cmath>
 #include "shape.cpp"
+#include "planet.cpp"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -114,8 +115,11 @@ int main()
     
     Square square1 = Square(shaderProgram, {-0.5f,0.0f}, hex2rgb(0xFFA500), 0.5f);
     Triangle triangle1 = Triangle(shaderProgram, {0.5f,0.0f}, {0.0f,0.0f,0.0f}, 0.5f);
-    Circle circle1 = Circle(shaderProgram, {0.0f,0.0f}, hex2rgb(0x90EE90), 0.05f, 64);
-    Point point1 = Point(shaderProgram, {0.2f, 0.2f}, hex2rgb(0xFFA500));
+    Circle circle1 = Circle(shaderProgram, {0.85f,0.25f}, hex2rgb(0x90EE90), 0.05f, 64);
+    Circle circle2 = Circle(shaderProgram, {0.0f,0.0f}, hex2rgb(0xFFA500), 0.05f, 64);
+    Planet planet1 = Planet("moon", 1000, {0.85f,0.25f});
+    Planet planet2 = Planet("earth", 500000, {0.0f, 0.0f});
+    planet1.velocity = {-0.003f, -0.003f};
     // uncomment this call to draw in wireframe polygons.
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
@@ -123,42 +127,29 @@ int main()
     // -----------
 
     std::chrono::time_point<std::chrono::system_clock> accStart,accEnd, animationStart;
-    float dis = 0.0f;
-    float vel = 0.0f;
-    float acc = 0.0f;
-    float momentum = 0.005f;
-    int bounces = 0;
     accStart = std::chrono::system_clock::now();
     animationStart = std::chrono::system_clock::now();
 
+    //circle1.move();
     while (!glfwWindowShouldClose(window))
     {
         accEnd = std::chrono::system_clock::now();
-        if(std::chrono::duration<double>(accEnd-accStart).count() > 0.2){
-            circle1.move(0.0f, 0.0f+dis);
-            dis += 0.0005f;
+        if(std::chrono::duration<double>(accEnd-accStart).count() > 0.001){
             accStart = std::chrono::system_clock::now();
-            /*Acceleration*/
-            // dis += vel;
-            // if(dis > 1.5f){
-            //     vel = -vel;
-            //     acc = -(acc - (0.1f * (bounces + 1)));
-            //     bounces++;
-            // }
-            // vel += acc;
-            // acc += 0.007f;
-        }
+            Vector2D force1 = planet1.calculateGravityForce(planet2);
+            Vector2D force2 = planet2.calculateGravityForce(planet1);
+            Vector2D acceleration1 = force1 * (1/planet1.mass); 
+            Vector2D acceleration2 = force2 * (1/planet2.mass); 
 
+            planet1.velocity = planet1.velocity + acceleration1;
+            planet2.velocity = planet2.velocity + acceleration2;
+            planet1.position = planet1.position + planet1.velocity;
+            planet2.position = planet2.position + planet2.velocity;
+
+            circle1.move(-planet1.velocity.x, -planet1.velocity.y);
+            circle2.move(-planet2.velocity.x, -planet2.velocity.y);
+        } 
         
-      if(std::chrono::duration<double>(accEnd-animationStart).count() > 4){
-           dis = 0.0f;
-           vel = 0.0f;
-           acc = 0.0f;
-           bounces = 0;
-           circle1.reset();
-           animationStart = std::chrono::system_clock::now();
-        }
-
         // input
         // -----
         processInput(window);
@@ -167,11 +158,12 @@ int main()
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
+        glUseProgram(shaderProgram);
+
         // circle1 = Circle(shaderProgram, {0.5f,0.0f}, hex2rgb(0x90EE90), 0.25f, 64);
          
-        // square1.render();
-        point1.render();
-        // circle1.render();
+        circle1.render();
+        circle2.render();
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
