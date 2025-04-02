@@ -8,7 +8,7 @@
 #include <cstring>
 #include <chrono>
 #include <cmath>
-#include "Shape.cpp"
+#include "shape.cpp"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -114,7 +114,8 @@ int main()
     
     Square square1 = Square(shaderProgram, {-0.5f,0.0f}, hex2rgb(0xFFA500), 0.5f);
     Triangle triangle1 = Triangle(shaderProgram, {0.5f,0.0f}, {0.0f,0.0f,0.0f}, 0.5f);
-    Circle circle1 = Circle(shaderProgram, {0.5f,0.0f}, hex2rgb(0x90EE90), 0.25f, 64);
+    Circle circle1 = Circle(shaderProgram, {0.0f,0.0f}, hex2rgb(0x90EE90), 0.05f, 64);
+    Point point1 = Point(shaderProgram, {0.2f, 0.2f}, hex2rgb(0xFFA500));
     // uncomment this call to draw in wireframe polygons.
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
@@ -130,35 +131,33 @@ int main()
     accStart = std::chrono::system_clock::now();
     animationStart = std::chrono::system_clock::now();
 
-    //circle1.move();
     while (!glfwWindowShouldClose(window))
     {
         accEnd = std::chrono::system_clock::now();
-        if(std::chrono::duration<double>(accEnd-accStart).count() > 0.1){
+        if(std::chrono::duration<double>(accEnd-accStart).count() > 0.2){
+            circle1.move(0.0f, 0.0f+dis);
+            dis += 0.0005f;
             accStart = std::chrono::system_clock::now();
-            dis += vel;
-            //if(dis < -0.75f){
-            if(dis > 1.5f){
-                vel = -vel;
-                acc = -(acc - (0.1f * (bounces + 1)));
-                bounces++;
-            }
-            //if(dis > 0.75f){
-            //    vel += acc;
-            //    acc += 0.1f;
-            //}
-            vel += acc;
-            acc += 0.007f;
+            /*Acceleration*/
+            // dis += vel;
+            // if(dis > 1.5f){
+            //     vel = -vel;
+            //     acc = -(acc - (0.1f * (bounces + 1)));
+            //     bounces++;
+            // }
+            // vel += acc;
+            // acc += 0.007f;
         }
 
         
-      // if(std::chrono::duration<double>(accEnd-animationStart).count() > 10){
-      //      float dis = 0.0f;
-      //      float vel = 0.0f;
-      //      float acc = 0.0f;
-      //      int bounces = 0;
-      //      animationStart = std::chrono::system_clock::now();
-      //   }
+      if(std::chrono::duration<double>(accEnd-animationStart).count() > 4){
+           dis = 0.0f;
+           vel = 0.0f;
+           acc = 0.0f;
+           bounces = 0;
+           circle1.reset();
+           animationStart = std::chrono::system_clock::now();
+        }
 
         // input
         // -----
@@ -168,12 +167,11 @@ int main()
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glUseProgram(shaderProgram);
-
         // circle1 = Circle(shaderProgram, {0.5f,0.0f}, hex2rgb(0x90EE90), 0.25f, 64);
          
-        square1.render();
-        circle1.render();
+        // square1.render();
+        point1.render();
+        // circle1.render();
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------

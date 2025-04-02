@@ -45,7 +45,8 @@ class Shape{
         void createVBO();
         void createEBO();
         void render();
-        void move();
+        void move(float x, float y);
+        void reset();
 };
 
 Shape::Shape(unsigned int shader, std::vector<float> vertices, std::vector<unsigned int> indices, RGB color, int numElements){
@@ -110,10 +111,12 @@ void Shape::render(){
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void Shape::move(){
+void Shape::move(float x, float y){
+    this->trans = glm::translate(this->trans, glm::vec3(x,y,0.0f));
+}
+
+void Shape::reset(){
     this->trans = glm::mat4(1.0f);
-    this->trans = glm::rotate(trans, glm::radians(90.0f), glm::vec3(0.0,0.0,1.0));
-    this->trans = glm::scale(trans, glm::vec3(0.5,0.5,0.5));
 }
 
 class Square : public Shape{
@@ -184,5 +187,11 @@ class Circle : public Shape{
             return indices;
         }
 };
+
+class Point : public Shape{
+    public:
+        Point(unsigned int shader, Pos pos, RGB color) : Shape(shader, {pos.x, pos.y, 0.0f}, {0}, color, 1) {}
+};
+
 
 
