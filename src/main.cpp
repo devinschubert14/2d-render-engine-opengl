@@ -112,16 +112,25 @@ int main()
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
-    
-    Square square1 = Square(shaderProgram, {-0.5f,0.0f}, hex2rgb(0xFFA500), 0.5f);
-    Triangle triangle1 = Triangle(shaderProgram, {0.5f,0.0f}, {0.0f,0.0f,0.0f}, 0.5f);
-    Circle circle1 = Circle(shaderProgram, {0.85f,0.25f}, hex2rgb(0x90EE90), 0.05f, 64);
-    Circle circle2 = Circle(shaderProgram, {0.0f,0.0f}, hex2rgb(0xFFA500), 0.05f, 64);
-    Planet planet1 = Planet("moon", 1000, {0.85f,0.25f});
-    Planet planet2 = Planet("earth", 500000, {0.0f, 0.0f});
-    planet1.velocity = {-0.003f, -0.003f};
-    // uncomment this call to draw in wireframe polygons.
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    float scaleFactor = 1.0/SIM_SIZE; 
+    Planet planet1 = Planet("sun", 1000, {0, 0});
+    Planet planet2 = Planet("earth", 100, {-500.0f,0});
+    // Planet planet3 = Planet("moon", 1000, {-0.30f,0.0f});
+    float radius1 = std::sqrt(planet1.mass) * scaleFactor;
+    float radius2 = std::sqrt(planet2.mass) * scaleFactor;
+    Circle circle1 = Circle(shaderProgram, {0.0f,0.0f}, hex2rgb(0x90EE90), radius1, 64);
+    Circle circle2 = Circle(shaderProgram, {0.25f,0.0f}, hex2rgb(0xFFA500), radius2, 64);
+    // Circle circle3 = Circle(shaderProgram, {-0.25f,0.0f}, hex2rgb(0xFFC0CB), 0.05f, 64);
+    // planet2.velocity = {0.0f, -0.0001f};
+    // planet3.velocity = {0.00001f, 0.001f};
+    std::vector<Planet> planets;
+    std::vector<Circle> circles;
+    planets.push_back(planet1);
+    planets.push_back(planet2);
+    // planets.push_back(planet3);
+    // circles.push_back(circle1);
+    // circles.push_back(circle2);
+    // circles.push_back(circle3);
 
     // render loop
     // -----------
@@ -135,21 +144,46 @@ int main()
     {
         accEnd = std::chrono::system_clock::now();
         if(std::chrono::duration<double>(accEnd-accStart).count() > 0.001){
+            for(int i = 0; i < planets.size(); i++){
+                Planet p1 = planets[i];
+                for(int j = i+1; j < planets.size(); j++){
+                    Planet p2 = planets[j];
+                    Vector2D force1 = p1.calculateGravityForce(p2);
+                    Vector2D force2 = p2.calculateGravityForce(p1);
+                    Vector2D acceleration1 = force1 * (1/p1.mass); 
+                    Vector2D acceleration2 = force2 * (1/p2.mass); 
+
+                    p1.velocity = p1.velocity + acceleration1;
+                    p2.velocity = p2.velocity + acceleration2;
+                    p1.position = p1.position + p1.velocity;
+                    p2.position = p2.position + p2.velocity;
+
+                    if(i == 0){
+                        circle1.move(p1.velocity.x, p1.velocity.y);
+                    }
+                    if(i == 1){
+                        circle2.move(p1.velocity.x, p1.velocity.y);
+                    }
+                    if(i == 2){
+                        // circle3.move(p1.velocity.x, p1.velocity.y);
+                    }
+
+                    if(j == 0){
+                        circle1.move(p2.velocity.x, p2.velocity.y);
+                    }
+                    if(j == 1){
+                        circle2.move(p2.velocity.x, p2.velocity.y);
+                    }
+                    if(j == 2){
+                        // circle3.move(-p2.velocity.x, p2.velocity.y);
+                    }
+                    // circles[i].move(-p1.velocity.x, -p1.velocity.y);
+                    // circles[j].move(-p2.velocity.x, -p2.velocity.y);
+                }
+            }
             accStart = std::chrono::system_clock::now();
-            Vector2D force1 = planet1.calculateGravityForce(planet2);
-            Vector2D force2 = planet2.calculateGravityForce(planet1);
-            Vector2D acceleration1 = force1 * (1/planet1.mass); 
-            Vector2D acceleration2 = force2 * (1/planet2.mass); 
-
-            planet1.velocity = planet1.velocity + acceleration1;
-            planet2.velocity = planet2.velocity + acceleration2;
-            planet1.position = planet1.position + planet1.velocity;
-            planet2.position = planet2.position + planet2.velocity;
-
-            circle1.move(-planet1.velocity.x, -planet1.velocity.y);
-            circle2.move(-planet2.velocity.x, -planet2.velocity.y);
         } 
-        
+
         // input
         // -----
         processInput(window);
@@ -158,13 +192,13 @@ int main()
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glUseProgram(shaderProgram);
-
-        // circle1 = Circle(shaderProgram, {0.5f,0.0f}, hex2rgb(0x90EE90), 0.25f, 64);
-         
         circle1.render();
         circle2.render();
+    // circle3.render();
 
+        // for(Circle circ: circles){
+        //     circ.render();
+        // }
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
