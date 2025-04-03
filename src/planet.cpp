@@ -4,7 +4,8 @@
 
 // #define G_CONST 6.67430e-11
 #define G_CONST 0.1f
-#define SIM_SIZE 1000.0f
+#define SIM_SIZE 2000.0f
+#define MIN_DISTANCE_THRESHOLD 20.0f
 struct Vector2D{
     float x;
     float y;
@@ -68,7 +69,7 @@ Vector2D Planet::calculateGravityForce(const Planet& other){
     distance = r.magnitude();
     
     //Force Magnitude
-    if(distance == 0.0f){
+    if(distance < MIN_DISTANCE_THRESHOLD){
         return {0,0};
     }
     forceMagnitude = (G_CONST * (this->mass * other.mass))/(distance*distance);

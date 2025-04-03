@@ -51,7 +51,7 @@ int main()
 
     // glfw window creation
     // --------------------
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Planet Simulation", NULL, NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -113,24 +113,31 @@ int main()
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
     float scaleFactor = 1.0/SIM_SIZE; 
-    Planet planet1 = Planet("sun", 1000, {0, 0});
-    Planet planet2 = Planet("earth", 100, {-500.0f,0});
-    // Planet planet3 = Planet("moon", 1000, {-0.30f,0.0f});
+    Planet planet1 = Planet("sun", 40000, {0, 0});
+    Planet planet2 = Planet("earth", 6500, {-1500.0,500.0f});
+    Planet planet3 = Planet("moon", 700, {-1600.0f,725.0f});
+    Planet planet4 = Planet("Neptune", 350, {0.0f,1000.0f});
     float radius1 = std::sqrt(planet1.mass) * scaleFactor;
     float radius2 = std::sqrt(planet2.mass) * scaleFactor;
+    float radius3 = std::sqrt(planet3.mass) * scaleFactor;
+    float radius4 = std::sqrt(planet4.mass) * scaleFactor;
     Circle circle1 = Circle(shaderProgram, {0.0f,0.0f}, hex2rgb(0x90EE90), radius1, 64);
-    Circle circle2 = Circle(shaderProgram, {planet2.position.x * scaleFactor,0.0f}, hex2rgb(0xFFA500), radius2, 64);
-    // Circle circle3 = Circle(shaderProgram, {-0.25f,0.0f}, hex2rgb(0xFFC0CB), 0.05f, 64);
-    // planet2.velocity = {0.0f, -0.0001f};
-    // planet3.velocity = {0.00001f, 0.001f};
+    Circle circle2 = Circle(shaderProgram, {planet2.position.x * scaleFactor,planet2.position.y * scaleFactor}, hex2rgb(0xFFA500), radius2, 64);
+    Circle circle3 = Circle(shaderProgram, {planet3.position.x * scaleFactor,planet3.position.y * scaleFactor}, hex2rgb(0xFFC0CB), radius3, 64);
+    Circle circle4 = Circle(shaderProgram, {planet4.position.x * scaleFactor,planet4.position.y*scaleFactor}, hex2rgb(0xFF0000), radius4, 64);
+    planet2.velocity = {1.0f, 0.6f};
+    planet3.velocity = {1.8f, 0.9f};
+    // planet4.velocity = {0.4f, 0.0f};
     std::vector<Planet> planets;
-    std::vector<Circle> circles;
+    std::vector<Circle*> circles;
     planets.push_back(planet1);
     planets.push_back(planet2);
-    // planets.push_back(planet3);
-    // circles.push_back(circle1);
-    // circles.push_back(circle2);
-    // circles.push_back(circle3);
+    planets.push_back(planet3);
+    // planets.push_back(planet4);
+    circles.push_back(&circle1);
+    circles.push_back(&circle2);
+    circles.push_back(&circle3);
+    // circles.push_back(&circle4);
 
     // render loop
     // -----------
@@ -155,30 +162,12 @@ int main()
 
                     p1->velocity = p1->velocity + acceleration1;
                     p2->velocity = p2->velocity + acceleration2;
+                    planets[0].velocity = {0,0};
                     p1->position = p1->position + p1->velocity;
                     p2->position = p2->position + p2->velocity;
 
-                    if(i == 0){
-                        circle1.move(p1->velocity.x*scaleFactor, p1->velocity.y*scaleFactor);
-                    }
-                    if(i == 1){
-                        circle2.move(p1->velocity.x*scaleFactor, p1->velocity.y*scaleFactor);
-                    }
-                    if(i == 2){
-                        // circle3.move(p1.velocity.x, p1.velocity.y);
-                    }
-
-                    if(j == 0){
-                        circle1.move(p2->velocity.x*scaleFactor, p2->velocity.y*scaleFactor);
-                    }
-                    if(j == 1){
-                        circle2.move(p2->velocity.x*scaleFactor, p2->velocity.y*scaleFactor);
-                    }
-                    if(j == 2){
-                        // circle3.move(-p2.velocity.x, p2.velocity.y);
-                    }
-                    // circles[i].move(-p1.velocity.x, -p1.velocity.y);
-                    // circles[j].move(-p2.velocity.x, -p2.velocity.y);
+                    circles[i]->move(p1->velocity.x * scaleFactor, p1->velocity.y*scaleFactor);
+                    circles[j]->move(p2->velocity.x * scaleFactor, p2->velocity.y*scaleFactor);
                 }
             }
             accStart = std::chrono::system_clock::now();
@@ -192,9 +181,9 @@ int main()
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        circle1.render();
-        circle2.render();
-    // circle3.render();
+        for(Circle* circle: circles){
+            circle->render();
+        }
 
         // for(Circle circ: circles){
         //     circ.render();
