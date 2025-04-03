@@ -119,7 +119,7 @@ int main()
     float radius1 = std::sqrt(planet1.mass) * scaleFactor;
     float radius2 = std::sqrt(planet2.mass) * scaleFactor;
     Circle circle1 = Circle(shaderProgram, {0.0f,0.0f}, hex2rgb(0x90EE90), radius1, 64);
-    Circle circle2 = Circle(shaderProgram, {0.25f,0.0f}, hex2rgb(0xFFA500), radius2, 64);
+    Circle circle2 = Circle(shaderProgram, {planet2.position.x * scaleFactor,0.0f}, hex2rgb(0xFFA500), radius2, 64);
     // Circle circle3 = Circle(shaderProgram, {-0.25f,0.0f}, hex2rgb(0xFFC0CB), 0.05f, 64);
     // planet2.velocity = {0.0f, -0.0001f};
     // planet3.velocity = {0.00001f, 0.001f};
@@ -145,34 +145,34 @@ int main()
         accEnd = std::chrono::system_clock::now();
         if(std::chrono::duration<double>(accEnd-accStart).count() > 0.001){
             for(int i = 0; i < planets.size(); i++){
-                Planet p1 = planets[i];
+                Planet *p1 = &planets[i];
                 for(int j = i+1; j < planets.size(); j++){
-                    Planet p2 = planets[j];
-                    Vector2D force1 = p1.calculateGravityForce(p2);
-                    Vector2D force2 = p2.calculateGravityForce(p1);
-                    Vector2D acceleration1 = force1 * (1/p1.mass); 
-                    Vector2D acceleration2 = force2 * (1/p2.mass); 
+                    Planet *p2 = &planets[j];
+                    Vector2D force1 = p1->calculateGravityForce(*p2);
+                    Vector2D force2 = p2->calculateGravityForce(*p1);
+                    Vector2D acceleration1 = force1 * (1/p1->mass); 
+                    Vector2D acceleration2 = force2 * (1/p2->mass); 
 
-                    p1.velocity = p1.velocity + acceleration1;
-                    p2.velocity = p2.velocity + acceleration2;
-                    p1.position = p1.position + p1.velocity;
-                    p2.position = p2.position + p2.velocity;
+                    p1->velocity = p1->velocity + acceleration1;
+                    p2->velocity = p2->velocity + acceleration2;
+                    p1->position = p1->position + p1->velocity;
+                    p2->position = p2->position + p2->velocity;
 
                     if(i == 0){
-                        circle1.move(p1.velocity.x, p1.velocity.y);
+                        circle1.move(p1->velocity.x*scaleFactor, p1->velocity.y*scaleFactor);
                     }
                     if(i == 1){
-                        circle2.move(p1.velocity.x, p1.velocity.y);
+                        circle2.move(p1->velocity.x*scaleFactor, p1->velocity.y*scaleFactor);
                     }
                     if(i == 2){
                         // circle3.move(p1.velocity.x, p1.velocity.y);
                     }
 
                     if(j == 0){
-                        circle1.move(p2.velocity.x, p2.velocity.y);
+                        circle1.move(p2->velocity.x*scaleFactor, p2->velocity.y*scaleFactor);
                     }
                     if(j == 1){
-                        circle2.move(p2.velocity.x, p2.velocity.y);
+                        circle2.move(p2->velocity.x*scaleFactor, p2->velocity.y*scaleFactor);
                     }
                     if(j == 2){
                         // circle3.move(-p2.velocity.x, p2.velocity.y);
