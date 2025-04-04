@@ -5,12 +5,13 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <ios>
 #include <iostream>
 #include <cstring>
 #include <chrono>
 #include <cmath>
-#include "shape.cpp"
-#include "planet.cpp"
+#include "shape.hpp"
+#include "planet.hpp"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -109,6 +110,8 @@ glm::mat4 OpenGLApp::getCamera(){
 }
 
 OpenGLApp app = OpenGLApp(nullptr);
+unsigned int shaderProgram;
+float scaleFactor;
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 int main()
 {
@@ -172,7 +175,7 @@ int main()
         std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
     }
     // link shaders
-    unsigned int shaderProgram = glCreateProgram();
+    shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
     glLinkProgram(shaderProgram);
@@ -187,19 +190,11 @@ int main()
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
-    float scaleFactor = 1.0/SIM_SIZE; 
-    Planet planet1 = Planet("sun", 1000, {0, 0});
-    Planet planet2 = Planet("earth", 5.97, {-350.0,200.0f});
-    Planet planet3 = Planet("jupiter", 12, {650.0f,350.0f});
-    Planet planet4 = Planet("moon", 1, {-350.0f,210.0f});
-    float radius1 = std::sqrt(planet1.mass) * scaleFactor;
-    float radius2 = std::sqrt(planet2.mass) * scaleFactor;
-    float radius3 = std::sqrt(planet3.mass) * scaleFactor;
-    float radius4 = std::sqrt(planet4.mass) * scaleFactor;
-    Circle circle1 = Circle(shaderProgram, {0.0f,0.0f}, hex2rgb(0x90EE90), radius1, 64);
-    Circle circle2 = Circle(shaderProgram, {planet2.position.x * scaleFactor,planet2.position.y * scaleFactor}, hex2rgb(0xFFA500), radius2, 64);
-    Circle circle3 = Circle(shaderProgram, {planet3.position.x * scaleFactor,planet3.position.y * scaleFactor}, hex2rgb(0xFFC0CB), radius3, 64);
-    Circle circle4 = Circle(shaderProgram, {planet4.position.x * scaleFactor,planet4.position.y*scaleFactor}, hex2rgb(0xFF0000), radius4, 64);
+    scaleFactor = 1.0/SIM_SIZE; 
+    Planet planet1 = Planet("sun", 1000, {0, 0}, hex2rgb(0x90EE90));
+    Planet planet2 = Planet("earth", 5.97, {-350.0,200.0f}, hex2rgb(0xFFA500));
+    Planet planet3 = Planet("jupiter", 12, {650.0f,350.0f}, hex2rgb(0xFFC0CB));
+    Planet planet4 = Planet("moon", 1, {-350.0f,210.0f}, hex2rgb(0xFF0000));
     planet2.velocity = {0.05f, 0.07f};
     planet3.velocity = {0.0f, -0.05f};
     planet4.velocity = {0.048f, 0.07f};
@@ -209,11 +204,6 @@ int main()
     planets.push_back(planet2);
     planets.push_back(planet3);
     planets.push_back(planet4);
-
-    circles.push_back(&circle1);
-    circles.push_back(&circle2);
-    circles.push_back(&circle3);
-    circles.push_back(&circle4);
 
     // render loop
     // -----------
@@ -242,8 +232,8 @@ int main()
                 p1->position = p1->position + p1->velocity * dt;
                 p2->position = p2->position + p2->velocity * dt;
 
-                circles[i]->move(p1->velocity.x * scaleFactor * dt, p1->velocity.y*scaleFactor * dt);
-                circles[j]->move(p2->velocity.x * scaleFactor * dt, p2->velocity.y*scaleFactor * dt);
+                planets[i].circle->move(p1->velocity.x * scaleFactor * dt, p1->velocity.y*scaleFactor * dt);
+                planets[j].circle->move(p2->velocity.x * scaleFactor * dt, p2->velocity.y*scaleFactor * dt);
             }
         } 
 
@@ -263,8 +253,8 @@ int main()
         glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        for(Circle* circle: circles){
-            circle->render(app.getCamera());
+        for(Planet planet: planets){
+            planet.circle->render(app.getCamera());
         }
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
