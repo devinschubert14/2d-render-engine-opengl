@@ -44,7 +44,7 @@ class Shape{
         void createVAO(unsigned int shader);
         void createVBO();
         void createEBO();
-        void render();
+        void render(const glm::mat4& mvMatrix);
         void move(float x, float y);
         void reset();
 };
@@ -93,7 +93,7 @@ void Shape::createEBO(){
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size()*sizeof(unsigned int), this->indices.data(), GL_STATIC_DRAW);
 }
 
-void Shape::render(){
+void Shape::render(const glm::mat4& mvMatrix){
     glBindVertexArray(this->vao);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->ebo);
 
@@ -101,8 +101,10 @@ void Shape::render(){
     int colorLocation = glGetUniformLocation(this->shader, "aColor"); 
     glUniform4f(colorLocation, color.r, color.g, color.b, 1.0f);
 
+    glm::mat4 mvp = mvMatrix * this->trans;
+
     int transformLocation = glGetUniformLocation(this->shader, "transform"); 
-    glUniformMatrix4fv(transformLocation, 1, GL_FALSE, glm::value_ptr(this->trans));
+    glUniformMatrix4fv(transformLocation, 1, GL_FALSE, glm::value_ptr(mvp));
 
     glDrawElements(GL_TRIANGLES, this->indices.size(), GL_UNSIGNED_INT, 0);
 

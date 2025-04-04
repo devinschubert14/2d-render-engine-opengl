@@ -1,5 +1,6 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/fwd.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -13,8 +14,6 @@
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
-float* drawTriangle(float x, float y, float width, float height);
-int drawCircle(float x, float y, float radius, unsigned int accuracy, float* vertices, unsigned int* indices);
 
 // settings
 #define ACCURACY 64
@@ -36,6 +35,81 @@ const char *fragmentShaderSource = "#version 330 core\n"
     "   FragColor = vec4(aColor);\n"
     "}\n\0";
 
+typedef struct {
+    float left = -1.0f;
+    float right = 1.0f;
+    float top = 1.0f;
+    float bottom = -1.0f;
+    float near = -1.0f;
+    float far = 1.0f;
+}OrthoMatrix;
+
+class OpenGLApp{
+    private:
+        glm::vec3 eye;
+        glm::mat4 cameraMatrix;
+        float zoomLevel;
+        OrthoMatrix orthoInfo;
+        GLFWwindow* window;
+    public:
+        OpenGLApp(GLFWwindow* window);
+        void moveCamera(float x, float y);
+        void zoomCamera(float zoom);
+        void updateCamera();
+        bool cameraUpdated();
+        glm::mat4 getCamera();
+        bool cameraUpdate;
+};
+
+OpenGLApp::OpenGLApp(GLFWwindow* window){
+    this->window = window;
+    this->eye = glm::vec3(0.0f, 0.0f, 0.0f);
+    this->zoomLevel = 1.0f;
+    cameraUpdate = false;
+    moveCamera(0.0f, 0.0f);
+}
+
+void OpenGLApp::moveCamera(float x, float y){
+    this->eye.x += x;
+    if(this->eye.x > 1.0f){
+       this->eye.x = 1.0f;
+    }
+    if(this->eye.x < -1.0f){
+       this->eye.x = -1.0f;
+    }
+
+    this->eye.y += y;
+    if(this->eye.y > 1.0f){
+       this->eye.y = 1.0f;
+    }
+    if(this->eye.y < -1.0f){
+       this->eye.y = -1.0f;
+    }
+    this->cameraUpdate = true;
+    updateCamera();
+}
+
+void OpenGLApp::zoomCamera(float zoom){
+    this->orthoInfo.left *= zoom;
+    this->orthoInfo.right *= zoom;
+    this->orthoInfo.top *= zoom;
+    this->orthoInfo.bottom *= zoom;
+    this->cameraUpdate = true;
+    updateCamera();
+}
+
+void OpenGLApp::updateCamera(){
+    glm::mat4 projection = glm::ortho(orthoInfo.left, orthoInfo.right, orthoInfo.bottom, orthoInfo.top, orthoInfo.near, orthoInfo.far);
+    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(this->eye.x, this->eye.y, this->eye.z));
+    this->cameraMatrix = projection * view;
+}
+
+glm::mat4 OpenGLApp::getCamera(){
+    return this->cameraMatrix;
+}
+
+OpenGLApp app = OpenGLApp(nullptr);
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 int main()
 {
     // glfw: initialize and configure
@@ -60,6 +134,7 @@ int main()
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetScrollCallback(window, scrollCallback);
 
     // glad: load all OpenGL function pointers
     // ---------------------------------------
@@ -69,7 +144,7 @@ int main()
         return -1;
     }
 
-
+    app = OpenGLApp(window);
     // build and compile our shader program
     // ------------------------------------
     // vertex shader
@@ -113,10 +188,10 @@ int main()
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
     float scaleFactor = 1.0/SIM_SIZE; 
-    Planet planet1 = Planet("sun", 40000, {0, 0});
-    Planet planet2 = Planet("earth", 6500, {-1500.0,500.0f});
-    Planet planet3 = Planet("moon", 700, {-1600.0f,725.0f});
-    Planet planet4 = Planet("Neptune", 350, {0.0f,1000.0f});
+    Planet planet1 = Planet("sun", 1000, {0, 0});
+    Planet planet2 = Planet("earth", 5.97, {-350.0,200.0f});
+    Planet planet3 = Planet("jupiter", 12, {650.0f,350.0f});
+    Planet planet4 = Planet("moon", 1, {-350.0f,210.0f});
     float radius1 = std::sqrt(planet1.mass) * scaleFactor;
     float radius2 = std::sqrt(planet2.mass) * scaleFactor;
     float radius3 = std::sqrt(planet3.mass) * scaleFactor;
@@ -125,73 +200,78 @@ int main()
     Circle circle2 = Circle(shaderProgram, {planet2.position.x * scaleFactor,planet2.position.y * scaleFactor}, hex2rgb(0xFFA500), radius2, 64);
     Circle circle3 = Circle(shaderProgram, {planet3.position.x * scaleFactor,planet3.position.y * scaleFactor}, hex2rgb(0xFFC0CB), radius3, 64);
     Circle circle4 = Circle(shaderProgram, {planet4.position.x * scaleFactor,planet4.position.y*scaleFactor}, hex2rgb(0xFF0000), radius4, 64);
-    planet2.velocity = {1.0f, 0.6f};
-    planet3.velocity = {1.8f, 0.9f};
-    // planet4.velocity = {0.4f, 0.0f};
+    planet2.velocity = {0.05f, 0.07f};
+    planet3.velocity = {0.0f, -0.05f};
+    planet4.velocity = {0.048f, 0.07f};
     std::vector<Planet> planets;
     std::vector<Circle*> circles;
     planets.push_back(planet1);
     planets.push_back(planet2);
     planets.push_back(planet3);
-    // planets.push_back(planet4);
+    planets.push_back(planet4);
+
     circles.push_back(&circle1);
     circles.push_back(&circle2);
     circles.push_back(&circle3);
-    // circles.push_back(&circle4);
+    circles.push_back(&circle4);
 
     // render loop
     // -----------
+    std::chrono::time_point<std::chrono::high_resolution_clock> frameEnd, animationStart;
+    animationStart = std::chrono::high_resolution_clock::now();
 
-    std::chrono::time_point<std::chrono::system_clock> accStart,accEnd, animationStart;
-    accStart = std::chrono::system_clock::now();
-    animationStart = std::chrono::system_clock::now();
+    frameEnd = std::chrono::high_resolution_clock::now();
+    RGB backgroundColor = hex2rgb(0x000000);
 
-    //circle1.move();
     while (!glfwWindowShouldClose(window))
     {
-        accEnd = std::chrono::system_clock::now();
-        if(std::chrono::duration<double>(accEnd-accStart).count() > 0.001){
-            for(int i = 0; i < planets.size(); i++){
-                Planet *p1 = &planets[i];
-                for(int j = i+1; j < planets.size(); j++){
-                    Planet *p2 = &planets[j];
-                    Vector2D force1 = p1->calculateGravityForce(*p2);
-                    Vector2D force2 = p2->calculateGravityForce(*p1);
-                    Vector2D acceleration1 = force1 * (1/p1->mass); 
-                    Vector2D acceleration2 = force2 * (1/p2->mass); 
+        double dt = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - frameEnd).count();
+        dt *= 10000000;
+        for(int i = 0; i < planets.size(); i++){
+            Planet *p1 = &planets[i];
+            for(int j = i+1; j < planets.size(); j++){
+                Planet *p2 = &planets[j];
+                Vector2D force1 = p1->calculateGravityForce(*p2);
+                Vector2D force2 = p2->calculateGravityForce(*p1);
+                Vector2D acceleration1 = force1 * (1/p1->mass); 
+                Vector2D acceleration2 = force2 * (1/p2->mass); 
 
-                    p1->velocity = p1->velocity + acceleration1;
-                    p2->velocity = p2->velocity + acceleration2;
-                    planets[0].velocity = {0,0};
-                    p1->position = p1->position + p1->velocity;
-                    p2->position = p2->position + p2->velocity;
+                p1->velocity = p1->velocity + acceleration1 * dt;
+                p2->velocity = p2->velocity + acceleration2 * dt;
+                planets[0].velocity = {0,0};
+                p1->position = p1->position + p1->velocity * dt;
+                p2->position = p2->position + p2->velocity * dt;
 
-                    circles[i]->move(p1->velocity.x * scaleFactor, p1->velocity.y*scaleFactor);
-                    circles[j]->move(p2->velocity.x * scaleFactor, p2->velocity.y*scaleFactor);
-                }
+                circles[i]->move(p1->velocity.x * scaleFactor * dt, p1->velocity.y*scaleFactor * dt);
+                circles[j]->move(p2->velocity.x * scaleFactor * dt, p2->velocity.y*scaleFactor * dt);
             }
-            accStart = std::chrono::system_clock::now();
         } 
+
+        // if(app.cameraUpdate){
+        //     app.updateCamera();
+        //     for(int i = 0; i < circles.size(); i++){
+        //         circles[i]->applyTransformation(app.getCamera());
+        //     }
+        //     app.cameraUpdate = false;
+        // }
 
         // input
         // -----
         processInput(window);
         // render
         // ------
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         for(Circle* circle: circles){
-            circle->render();
+            circle->render(app.getCamera());
         }
 
-        // for(Circle circ: circles){
-        //     circ.render();
-        // }
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
         glfwPollEvents();
+        frameEnd = std::chrono::high_resolution_clock::now();
    }
 
     // optional: de-allocate all resources once they've outlived their purpose:
@@ -211,6 +291,28 @@ void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){
+        app.moveCamera(0.0f, -0.001f);
+    }
+    if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){
+        app.moveCamera(0.0f, 0.001f);
+    }
+    if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){
+        app.moveCamera(-0.001f, 0.0f);
+    }
+    if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){
+        app.moveCamera(0.001f, 0.0f);
+    }
+}
+
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset){
+    float zoomSensitivity = 0.1f; // Increase sensitivity for faster zoom changes
+    
+    if (yoffset > 0) {
+        app.zoomCamera(1.0 - zoomSensitivity);
+    } else if (yoffset < 0) {
+        app.zoomCamera(1.0 + zoomSensitivity);
+    }
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
