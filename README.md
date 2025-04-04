@@ -1,0 +1,3 @@
+2D Render Engine
+
+Hello reader! This is a personal project to learn OpenGL. I have done OpenGL projects before but I felt I always just followed the tutorial/class so here is my attempt at trying it more myself (obviously with some inspiration, unfortunately not a born genius :/). I am mainly going to use this project for physic sims (maybe 3D one day), so using a planet gravity simulator was a way for me to test the project and have some fun. The final project will hopefully be more clean and all planet stuff will be removed but all can see my path to creating this app. Obviously everything is super WIP right now including this README :P
