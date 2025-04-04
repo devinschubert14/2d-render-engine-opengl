@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Add executable
-add_executable(2d-render src/main.cpp)
+add_executable(2d-render src/main.cpp src/planet.cpp src/shape.cpp src/utils.cpp)
 
 # Find package(s)
 find_package(OpenGL REQUIRED COMPONENTS OpenGL)
@@ -23,7 +23,7 @@ add_library(glad src/glad.c)
 # Add include directories
 include_directories(${GLUT_INCLUDE_DIRS})
 include_directories(${GLEW_INCLUDE_DIRS})
-include_directories(${GLEW_INCLUDE_DIRS})
+include_directories(include)
 #target_include_directories(my_executable PUBLIC include)
 target_include_directories(glad PUBLIC include)
 

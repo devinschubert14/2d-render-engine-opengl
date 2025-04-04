@@ -1,74 +1,28 @@
-#include <string>
-#include <vector>
-#include <cmath>
+#include "planet.hpp"
 
-// #define G_CONST 6.67430e-11
-#define G_CONST 0.1f
-#define SIM_SIZE 1000.0f
-struct Vector2D{
-    float x;
-    float y;
 
-    Vector2D operator+(const Vector2D& other){
-        return {x + other.x, y + other.y};
-    }
-
-    Vector2D operator-(const Vector2D& other){
-        return {x - other.x, y - other.y};
-    }
-
-    Vector2D operator*(float scalar){
-        return {x * scalar, y * scalar};
-    }
-
-    float dot(const Vector2D& other){
-        return x* other.x + y * other.y;
-    }
-
-    float magnitude(){
-        return sqrt(x * x + y * y);
-    }
-
-    Vector2D normalize(){
-        float mag = magnitude();
-        return {x/mag, y/mag};
-    }
-};
-
-typedef struct {
-    float x;
-    float y;
-}PlanetPos;
-
-class Planet {
-    public:
-        std::string name;
-        float mass;
-        Vector2D position;
-        Vector2D velocity;
-        Planet(std::string name, float mass, Vector2D pos);
-        Vector2D calculateGravityForce(const Planet& other);
-    };
-
-std::vector<Planet> planets;
-
-Planet::Planet(std::string name, float mass, Vector2D pos){
+Planet::Planet(std::string name, float mass, Vector2D pos, RGB color){
     this->name = name;
     this->mass = mass;
     this->position =  {pos.x, pos.y};
     this->velocity = {0.0f, 0.0f};
-    planets.push_back(*this);
+
+    float x = pos.x * scaleFactor;
+    float y = pos.y * scaleFactor;
+
+    float radius = std::sqrt(mass) * scaleFactor;
+    this->circle = new Circle(shaderProgram,{x,y}, color, radius, 64);
 }
 
 Vector2D Planet::calculateGravityForce(const Planet& other){
     float distance, forceMagnitude;
 
     //Distance
-    Vector2D r = this->position - other.position; 
+    Vector2D r = other.position - this->position; 
     distance = r.magnitude();
     
     //Force Magnitude
-    if(distance == 0.0f){
+    if(distance < MIN_DISTANCE_THRESHOLD){
         return {0,0};
     }
     forceMagnitude = (G_CONST * (this->mass * other.mass))/(distance*distance);

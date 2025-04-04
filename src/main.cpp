@@ -1,26 +1,27 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/fwd.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <ios>
 #include <iostream>
 #include <cstring>
 #include <chrono>
 #include <cmath>
-#include "shape.cpp"
-#include "planet.cpp"
+#include "shape.hpp"
+#include "planet.hpp"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
-float* drawTriangle(float x, float y, float width, float height);
-int drawCircle(float x, float y, float radius, unsigned int accuracy, float* vertices, unsigned int* indices);
 
 // settings
 #define ACCURACY 64
 const unsigned int SCR_WIDTH = 1920;
 const unsigned int SCR_HEIGHT = 1080;
 
+//TODO: These should be actual shader files :P
 const char *vertexShaderSource = "#version 330 core\n"
     "layout (location = 0) in vec3 aPos;\n"
     "uniform mat4 transform;\n"
@@ -36,10 +37,90 @@ const char *fragmentShaderSource = "#version 330 core\n"
     "   FragColor = vec4(aColor);\n"
     "}\n\0";
 
+typedef struct {
+    float left = -1.0f;
+    float right = 1.0f;
+    float top = 1.0f;
+    float bottom = -1.0f;
+    float near = -1.0f;
+    float far = 1.0f;
+}OrthoMatrix;
+
+class OpenGLApp{
+    private:
+        glm::vec3 eye;
+        glm::mat4 cameraMatrix;
+        float zoomLevel;
+        OrthoMatrix orthoInfo;
+        GLFWwindow* window;
+    public:
+        OpenGLApp(GLFWwindow* window);
+        void moveCamera(float x, float y);
+        void zoomCamera(float zoom);
+        void updateCamera();
+        bool cameraUpdated();
+        glm::mat4 getCamera();
+        bool cameraUpdate;
+};
+
+OpenGLApp::OpenGLApp(GLFWwindow* window){
+    this->window = window;
+    this->eye = glm::vec3(0.0f, 0.0f, 0.0f);
+    this->zoomLevel = 1.0f;
+    cameraUpdate = false;
+    moveCamera(0.0f, 0.0f);
+}
+
+void OpenGLApp::moveCamera(float x, float y){
+    this->eye.x += x;
+    if(this->eye.x > 1.0f){
+       this->eye.x = 1.0f;
+    }
+    if(this->eye.x < -1.0f){
+       this->eye.x = -1.0f;
+    }
+
+    this->eye.y += y;
+    if(this->eye.y > 1.0f){
+       this->eye.y = 1.0f;
+    }
+    if(this->eye.y < -1.0f){
+       this->eye.y = -1.0f;
+    }
+    this->cameraUpdate = true;
+    updateCamera();
+}
+
+void OpenGLApp::zoomCamera(float zoom){
+    this->orthoInfo.left *= zoom;
+    this->orthoInfo.right *= zoom;
+    this->orthoInfo.top *= zoom;
+    this->orthoInfo.bottom *= zoom;
+    this->cameraUpdate = true;
+    updateCamera();
+}
+
+void OpenGLApp::updateCamera(){
+    glm::mat4 projection = glm::ortho(orthoInfo.left, orthoInfo.right, orthoInfo.bottom, orthoInfo.top, orthoInfo.near, orthoInfo.far);
+    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(this->eye.x, this->eye.y, this->eye.z));
+    this->cameraMatrix = projection * view;
+}
+
+glm::mat4 OpenGLApp::getCamera(){
+    return this->cameraMatrix;
+}
+
+OpenGLApp app = OpenGLApp(nullptr);
+
+
+//TODO: These should probably be added to OpenGLApp, they are needed by planet.hpp for shape.hpp
+//Deciding how planet and circle interact is tough
+unsigned int shaderProgram;
+float scaleFactor;
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 int main()
 {
-    // glfw: initialize and configure
-    // ------------------------------
+    /* GLFW */
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -49,9 +130,8 @@ int main()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-    // glfw window creation
-    // --------------------
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    /* Window */
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Planet Simulation", NULL, NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -60,18 +140,17 @@ int main()
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetScrollCallback(window, scrollCallback);
 
-    // glad: load all OpenGL function pointers
-    // ---------------------------------------
+    /* GLAD */
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         std::cout << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
 
-
-    // build and compile our shader program
-    // ------------------------------------
+    app = OpenGLApp(window);
+    /* Shaders */
     // vertex shader
     unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
@@ -97,7 +176,7 @@ int main()
         std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
     }
     // link shaders
-    unsigned int shaderProgram = glCreateProgram();
+    shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
     glLinkProgram(shaderProgram);
@@ -110,99 +189,95 @@ int main()
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
-    // set up vertex data (and buffer(s)) and configure vertex attributes
-    // ------------------------------------------------------------------
-    float scaleFactor = 1.0/SIM_SIZE; 
-    Planet planet1 = Planet("sun", 1000, {0, 0});
-    Planet planet2 = Planet("earth", 100, {-500.0f,0});
-    // Planet planet3 = Planet("moon", 1000, {-0.30f,0.0f});
-    float radius1 = std::sqrt(planet1.mass) * scaleFactor;
-    float radius2 = std::sqrt(planet2.mass) * scaleFactor;
-    Circle circle1 = Circle(shaderProgram, {0.0f,0.0f}, hex2rgb(0x90EE90), radius1, 64);
-    Circle circle2 = Circle(shaderProgram, {0.25f,0.0f}, hex2rgb(0xFFA500), radius2, 64);
-    // Circle circle3 = Circle(shaderProgram, {-0.25f,0.0f}, hex2rgb(0xFFC0CB), 0.05f, 64);
-    // planet2.velocity = {0.0f, -0.0001f};
-    // planet3.velocity = {0.00001f, 0.001f};
+    /* Scale Factor */
+    scaleFactor = 1.0/SIM_SIZE; //Should be part of OpenGLApp probably
+
+    /* Default settings */
+    RGB backgroundColor = hex2rgb(0x000000);
+
+    /* Planets */
+    Planet planet1 = Planet("sun", 1000, {0, 0}, hex2rgb(0x90EE90));
+    Planet planet2 = Planet("earth", 5.97, {-350.0,200.0f}, hex2rgb(0xFFA500));
+    Planet planet3 = Planet("jupiter", 12, {650.0f,350.0f}, hex2rgb(0xFFC0CB));
+    Planet planet4 = Planet("moon", 1, {-350.0f,210.0f}, hex2rgb(0xFF0000));
+    planet2.velocity = {0.05f, 0.07f};
+    planet3.velocity = {0.0f, -0.05f};
+    planet4.velocity = {0.048f, 0.07f};
     std::vector<Planet> planets;
-    std::vector<Circle> circles;
+    std::vector<Circle*> circles;
     planets.push_back(planet1);
     planets.push_back(planet2);
-    // planets.push_back(planet3);
-    // circles.push_back(circle1);
-    // circles.push_back(circle2);
-    // circles.push_back(circle3);
+    planets.push_back(planet3);
+    planets.push_back(planet4);
 
-    // render loop
-    // -----------
+    /* Frame timers */
+    std::chrono::time_point<std::chrono::high_resolution_clock> frameEnd, animationStart;
+    animationStart = std::chrono::high_resolution_clock::now();
+    frameEnd = std::chrono::high_resolution_clock::now();
 
-    std::chrono::time_point<std::chrono::system_clock> accStart,accEnd, animationStart;
-    accStart = std::chrono::system_clock::now();
-    animationStart = std::chrono::system_clock::now();
 
-    //circle1.move();
+    /* Render loop */
     while (!glfwWindowShouldClose(window))
     {
-        accEnd = std::chrono::system_clock::now();
-        if(std::chrono::duration<double>(accEnd-accStart).count() > 0.001){
-            for(int i = 0; i < planets.size(); i++){
-                Planet p1 = planets[i];
-                for(int j = i+1; j < planets.size(); j++){
-                    Planet p2 = planets[j];
-                    Vector2D force1 = p1.calculateGravityForce(p2);
-                    Vector2D force2 = p2.calculateGravityForce(p1);
-                    Vector2D acceleration1 = force1 * (1/p1.mass); 
-                    Vector2D acceleration2 = force2 * (1/p2.mass); 
+        /* Calculate frame time */
+        double dt = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - frameEnd).count();
+        dt *= 10000000; //Animation step speed
 
-                    p1.velocity = p1.velocity + acceleration1;
-                    p2.velocity = p2.velocity + acceleration2;
-                    p1.position = p1.position + p1.velocity;
-                    p2.position = p2.position + p2.velocity;
+        /* Apply forces */
+        //This loop makes sure planets are compared once
+        for(int i = 0; i < planets.size(); i++){
+            //First planet
+            Planet *p1 = &planets[i];
+            for(int j = i+1; j < planets.size(); j++){
+                //Second planet
+                Planet *p2 = &planets[j];
+                //Gather forces
+                Vector2D force1 = p1->calculateGravityForce(*p2);
+                Vector2D force2 = p2->calculateGravityForce(*p1);
 
-                    if(i == 0){
-                        circle1.move(p1.velocity.x, p1.velocity.y);
-                    }
-                    if(i == 1){
-                        circle2.move(p1.velocity.x, p1.velocity.y);
-                    }
-                    if(i == 2){
-                        // circle3.move(p1.velocity.x, p1.velocity.y);
-                    }
+                //Calculate acceleration
+                //TODO: Calculate position and acceleration in planet class function
+                Vector2D acceleration1 = force1 * (1/p1->mass); 
+                Vector2D acceleration2 = force2 * (1/p2->mass); 
 
-                    if(j == 0){
-                        circle1.move(p2.velocity.x, p2.velocity.y);
-                    }
-                    if(j == 1){
-                        circle2.move(p2.velocity.x, p2.velocity.y);
-                    }
-                    if(j == 2){
-                        // circle3.move(-p2.velocity.x, p2.velocity.y);
-                    }
-                    // circles[i].move(-p1.velocity.x, -p1.velocity.y);
-                    // circles[j].move(-p2.velocity.x, -p2.velocity.y);
-                }
+                //Calculate velocity
+                p1->velocity = p1->velocity + acceleration1 * dt;
+                p2->velocity = p2->velocity + acceleration2 * dt;
+                planets[0].velocity = {0,0}; //Hard coded a 'sun' to not move for now, animation looks better
+
+                //Calculate position
+                p1->position = p1->position + p1->velocity * dt;
+                p2->position = p2->position + p2->velocity * dt;
+
+                //Move planets
+                //Probably should just be a wrapper around circle->move i.e: planet->move will call circle->move
+                planets[i].circle->move(p1->velocity.x * scaleFactor * dt, p1->velocity.y*scaleFactor * dt);
+                planets[j].circle->move(p2->velocity.x * scaleFactor * dt, p2->velocity.y*scaleFactor * dt);
             }
-            accStart = std::chrono::system_clock::now();
         } 
 
-        // input
-        // -----
+        /* User Input */
         processInput(window);
-        // render
-        // ------
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+
+        /* Render */
+
+        //Clear screen
+        glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        circle1.render();
-        circle2.render();
-    // circle3.render();
+        //Add planets
+        for(Planet planet: planets){
+            //Probably should just be a wrapper around circle->render i.e: planet->render will call circle->render
+            planet.circle->render(app.getCamera());
+        }
 
-        // for(Circle circ: circles){
-        //     circ.render();
-        // }
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        //End of frame
+        frameEnd = std::chrono::high_resolution_clock::now();
    }
 
     // optional: de-allocate all resources once they've outlived their purpose:
@@ -222,6 +297,28 @@ void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){
+        app.moveCamera(0.0f, -0.001f);
+    }
+    if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){
+        app.moveCamera(0.0f, 0.001f);
+    }
+    if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){
+        app.moveCamera(-0.001f, 0.0f);
+    }
+    if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){
+        app.moveCamera(0.001f, 0.0f);
+    }
+}
+
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset){
+    float zoomSensitivity = 0.1f; // Increase sensitivity for faster zoom changes
+    
+    if (yoffset > 0) {
+        app.zoomCamera(1.0 - zoomSensitivity);
+    } else if (yoffset < 0) {
+        app.zoomCamera(1.0 + zoomSensitivity);
+    }
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes

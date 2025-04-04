@@ -1,53 +1,4 @@
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-#include <vector>
-#include <cmath>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-
-#define PI 3.14159265358979323846
-
-typedef struct {
-    float r;
-    float g;
-    float b;
-}RGB;
-
-RGB hex2rgb(int hexValue)
-{
-  RGB rgbColor;
-  rgbColor.r = ((hexValue >> 16) & 0xFF) / 255.0;  // Extract the RR byte
-  rgbColor.g = ((hexValue >> 8) & 0xFF) / 255.0;   // Extract the GG byte
-  rgbColor.b = ((hexValue) & 0xFF) / 255.0;        // Extract the BB byte
-
-  return rgbColor; 
-}
-
-typedef struct {
-    float x;
-    float y;
-}Pos;
-
-class Shape{
-    public:
-        std::vector<float> vertices;
-        std::vector<unsigned int> indices;
-        RGB color;
-        unsigned int shader;
-        unsigned int vao, vbo, ebo;
-        unsigned int numElements;
-        unsigned int numComponents;
-        glm::mat4 trans;
-        Shape(unsigned int shader, std::vector<float> vertices, std::vector<unsigned int> indices, RGB color, int numElements);
-        ~Shape();
-        void createVAO(unsigned int shader);
-        void createVBO();
-        void createEBO();
-        void render();
-        void move(float x, float y);
-        void reset();
-};
+#include "shape.hpp"
 
 Shape::Shape(unsigned int shader, std::vector<float> vertices, std::vector<unsigned int> indices, RGB color, int numElements){
     this->shader = shader;
@@ -93,7 +44,7 @@ void Shape::createEBO(){
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size()*sizeof(unsigned int), this->indices.data(), GL_STATIC_DRAW);
 }
 
-void Shape::render(){
+void Shape::render(const glm::mat4& mvMatrix){
     glBindVertexArray(this->vao);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->ebo);
 
@@ -101,8 +52,10 @@ void Shape::render(){
     int colorLocation = glGetUniformLocation(this->shader, "aColor"); 
     glUniform4f(colorLocation, color.r, color.g, color.b, 1.0f);
 
+    glm::mat4 mvp = mvMatrix * this->trans;
+
     int transformLocation = glGetUniformLocation(this->shader, "transform"); 
-    glUniformMatrix4fv(transformLocation, 1, GL_FALSE, glm::value_ptr(this->trans));
+    glUniformMatrix4fv(transformLocation, 1, GL_FALSE, glm::value_ptr(mvp));
 
     glDrawElements(GL_TRIANGLES, this->indices.size(), GL_UNSIGNED_INT, 0);
 
@@ -119,79 +72,59 @@ void Shape::reset(){
     this->trans = glm::mat4(1.0f);
 }
 
-class Square : public Shape{
-    public:
-        Square(unsigned int shader, Pos pos, RGB color, float sideLength) : Shape(shader, calculateVertices(pos,sideLength), calculateIndices(), color, 2) {
-        }
+Square::Square(unsigned int shader, Pos pos, RGB color, float sideLength) : Shape(shader, calculateVertices(pos,sideLength), calculateIndices(), color, 2) { }
+std::vector<float> Square::calculateVertices(Pos pos, float sideLength){
+    return {
+            (pos.x + (sideLength/2)), (pos.y + (sideLength/2)), 0.0f, //Top Right
+            (pos.x + (sideLength/2)), (pos.y - (sideLength/2)),  0.0f, //Bottom Right 
+            (pos.x - (sideLength/2)), (pos.y - (sideLength/2)), 0.0f, //Bottom Left
+            (pos.x - (sideLength/2)), (pos.y + (sideLength/2)), 0.0f //Top left
+    };
+}
 
-        std::vector<float> calculateVertices(Pos pos, float sideLength){
-            return {
-                    (pos.x + (sideLength/2)), (pos.y + (sideLength/2)), 0.0f, //Top Right
-                    (pos.x + (sideLength/2)), (pos.y - (sideLength/2)),  0.0f, //Bottom Right 
-                    (pos.x - (sideLength/2)), (pos.y - (sideLength/2)), 0.0f, //Bottom Left
-                    (pos.x - (sideLength/2)), (pos.y + (sideLength/2)), 0.0f //Top left
-            };
-        }
+std::vector<unsigned int> Square::calculateIndices(){
+    return {0,1,3,1,2,3};
+}
 
-        std::vector<unsigned int> calculateIndices(){
-            return {0,1,3,1,2,3};
-        }
-};
+Triangle::Triangle(unsigned int shader, Pos pos, RGB color, float sideLength) : Shape(shader, calculateVertices(pos,sideLength), calculateIndices(), color, 2) { }
 
-class Triangle : public Shape{
-    public:
-        Triangle(unsigned int shader, Pos pos, RGB color, float sideLength) : Shape(shader, calculateVertices(pos,sideLength), calculateIndices(), color, 2) {
-        }
+std::vector<float> Triangle::calculateVertices(Pos pos, float sideLength){
+    return {
+            (pos.x - (sideLength/2)), (pos.y - (sideLength/2)), 0.0f, //Bottom right
+            (pos.x + (sideLength/2)), (pos.y - (sideLength/2)), 0.0f, //Bottom left
+            (pos.x), (pos.y + (sideLength/2)), 0.0f  //Top 
+    };
+}
 
-        std::vector<float> calculateVertices(Pos pos, float sideLength){
-            return {
-                    (pos.x - (sideLength/2)), (pos.y - (sideLength/2)), 0.0f, //Bottom right
-                    (pos.x + (sideLength/2)), (pos.y - (sideLength/2)), 0.0f, //Bottom left
-                    (pos.x), (pos.y + (sideLength/2)), 0.0f  //Top 
-            };
-        }
+std::vector<unsigned int> Triangle::calculateIndices(){
+    return {0,2,1};
+}
 
-        std::vector<unsigned int> calculateIndices(){
-            return {0,2,1};
-        }
-};
+Circle::Circle(unsigned int shader, Pos pos, RGB color, float radius, unsigned int numElements) : Shape(shader, calculateVertices(pos,radius,  numElements), calculateIndices(numElements), color, numElements) { }
+std::vector<float> Circle::calculateVertices(Pos pos, float radius, unsigned int numElements){
+    std::vector<float> vertices;
+    float angleStep = 2 * PI / numElements; 
+    vertices.push_back(pos.x);
+    vertices.push_back(pos.y);
+    vertices.push_back(0.0f);
+    for(int i = 0; i < numElements; i++){
+        float angle =  i * angleStep;
+        vertices.push_back(pos.x + radius * cos(angle));
+        vertices.push_back(pos.y + radius * sin(angle));
+        vertices.push_back(0.0f);
+    }
+   return vertices; 
+}
 
-class Circle : public Shape{
-    public:
-        Circle(unsigned int shader, Pos pos, RGB color, float radius, unsigned int numElements) : Shape(shader, calculateVertices(pos,radius,  numElements), calculateIndices(numElements), color, numElements) {
-        }
-
-        std::vector<float> calculateVertices(Pos pos, float radius, unsigned int numElements){
-            std::vector<float> vertices;
-            float angleStep = 2 * PI / numElements; 
-            vertices.push_back(pos.x);
-            vertices.push_back(pos.y);
-            vertices.push_back(0.0f);
-            for(int i = 0; i < numElements; i++){
-                float angle =  i * angleStep;
-                vertices.push_back(pos.x + radius * cos(angle));
-                vertices.push_back(pos.y + radius * sin(angle));
-                vertices.push_back(0.0f);
-            }
-           return vertices; 
-        }
-
-        std::vector<unsigned int> calculateIndices(unsigned int numElements){
-            std::vector<unsigned int> indices;
-            for(int i = 0; i < numElements; i++){
-                indices.push_back(0);
-                indices.push_back(i + 1);
-                //indices[(i*VERTEX_COORD_TOTAL)+2] = i + 2;
-                indices.push_back((i + 1) % numElements + 1);
-            }
-            return indices;
-        }
-};
-
-class Point : public Shape{
-    public:
-        Point(unsigned int shader, Pos pos, RGB color) : Shape(shader, {pos.x, pos.y, 0.0f}, {0}, color, 1) {}
-};
-
+std::vector<unsigned int> Circle::calculateIndices(unsigned int numElements){
+    std::vector<unsigned int> indices;
+    for(int i = 0; i < numElements; i++){
+        indices.push_back(0);
+        indices.push_back(i + 1);
+        //indices[(i*VERTEX_COORD_TOTAL)+2] = i + 2;
+        indices.push_back((i + 1) % numElements + 1);
+    }
+    return indices;
+}
 
 
