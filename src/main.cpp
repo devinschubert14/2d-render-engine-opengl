@@ -120,8 +120,7 @@ float scaleFactor;
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 int main()
 {
-    // glfw: initialize and configure
-    // ------------------------------
+    /* GLFW */
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -131,8 +130,7 @@ int main()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-    // glfw window creation
-    // --------------------
+    /* Window */
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Planet Simulation", NULL, NULL);
     if (window == NULL)
     {
@@ -144,8 +142,7 @@ int main()
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetScrollCallback(window, scrollCallback);
 
-    // glad: load all OpenGL function pointers
-    // ---------------------------------------
+    /* GLAD */
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         std::cout << "Failed to initialize GLAD" << std::endl;
@@ -153,8 +150,7 @@ int main()
     }
 
     app = OpenGLApp(window);
-    // build and compile our shader program
-    // ------------------------------------
+    /* Shaders */
     // vertex shader
     unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
@@ -193,9 +189,13 @@ int main()
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
-    // set up vertex data (and buffer(s)) and configure vertex attributes
-    // ------------------------------------------------------------------
-    scaleFactor = 1.0/SIM_SIZE; 
+    /* Scale Factor */
+    scaleFactor = 1.0/SIM_SIZE; //Should be part of OpenGLApp probably
+
+    /* Default settings */
+    RGB backgroundColor = hex2rgb(0x000000);
+
+    /* Planets */
     Planet planet1 = Planet("sun", 1000, {0, 0}, hex2rgb(0x90EE90));
     Planet planet2 = Planet("earth", 5.97, {-350.0,200.0f}, hex2rgb(0xFFA500));
     Planet planet3 = Planet("jupiter", 12, {650.0f,350.0f}, hex2rgb(0xFFC0CB));
@@ -210,51 +210,64 @@ int main()
     planets.push_back(planet3);
     planets.push_back(planet4);
 
-    // render loop
-    // -----------
+    /* Frame timers */
     std::chrono::time_point<std::chrono::high_resolution_clock> frameEnd, animationStart;
     animationStart = std::chrono::high_resolution_clock::now();
-
     frameEnd = std::chrono::high_resolution_clock::now();
-    RGB backgroundColor = hex2rgb(0x000000);
 
+
+    /* Render loop */
     while (!glfwWindowShouldClose(window))
     {
-        //Frametime
+        /* Calculate frame time */
         double dt = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - frameEnd).count();
-        dt *= 10000000;
+        dt *= 10000000; //Animation step speed
 
-        //TODO: Change this to a class function in planets
-        //Apply forces
+        /* Apply forces */
+        //This loop makes sure planets are compared once
         for(int i = 0; i < planets.size(); i++){
+            //First planet
             Planet *p1 = &planets[i];
             for(int j = i+1; j < planets.size(); j++){
+                //Second planet
                 Planet *p2 = &planets[j];
+                //Gather forces
                 Vector2D force1 = p1->calculateGravityForce(*p2);
                 Vector2D force2 = p2->calculateGravityForce(*p1);
+
+                //Calculate acceleration
+                //TODO: Calculate position and acceleration in planet class function
                 Vector2D acceleration1 = force1 * (1/p1->mass); 
                 Vector2D acceleration2 = force2 * (1/p2->mass); 
 
+                //Calculate velocity
                 p1->velocity = p1->velocity + acceleration1 * dt;
                 p2->velocity = p2->velocity + acceleration2 * dt;
-                planets[0].velocity = {0,0};
+                planets[0].velocity = {0,0}; //Hard coded a 'sun' to not move for now, animation looks better
+
+                //Calculate position
                 p1->position = p1->position + p1->velocity * dt;
                 p2->position = p2->position + p2->velocity * dt;
 
+                //Move planets
+                //Probably should just be a wrapper around circle->move i.e: planet->move will call circle->move
                 planets[i].circle->move(p1->velocity.x * scaleFactor * dt, p1->velocity.y*scaleFactor * dt);
                 planets[j].circle->move(p2->velocity.x * scaleFactor * dt, p2->velocity.y*scaleFactor * dt);
             }
         } 
 
-        // input
-        // -----
+        /* User Input */
         processInput(window);
-        // render
-        // ------
+
+        /* Render */
+
+        //Clear screen
         glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
+        //Add planets
         for(Planet planet: planets){
+            //Probably should just be a wrapper around circle->render i.e: planet->render will call circle->render
             planet.circle->render(app.getCamera());
         }
 
@@ -262,6 +275,8 @@ int main()
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        //End of frame
         frameEnd = std::chrono::high_resolution_clock::now();
    }
 

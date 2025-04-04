@@ -14,10 +14,6 @@ Planet::Planet(std::string name, float mass, Vector2D pos, RGB color){
     this->circle = new Circle(shaderProgram,{x,y}, color, radius, 64);
 }
 
-Planet::~Planet(){
-    delete this->circle;
-}
-
 Vector2D Planet::calculateGravityForce(const Planet& other){
     float distance, forceMagnitude;
 
