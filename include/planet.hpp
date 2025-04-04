@@ -23,6 +23,7 @@ class Planet {
         Vector2D position;
         Vector2D velocity;
         Planet(std::string name, float mass, Vector2D pos, RGB color);
+        ~Planet();
         Vector2D calculateGravityForce(const Planet& other);
         Circle* circle;
 };

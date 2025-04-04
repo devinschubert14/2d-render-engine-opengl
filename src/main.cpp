@@ -21,6 +21,7 @@ void processInput(GLFWwindow *window);
 const unsigned int SCR_WIDTH = 1920;
 const unsigned int SCR_HEIGHT = 1080;
 
+//TODO: These should be actual shader files :P
 const char *vertexShaderSource = "#version 330 core\n"
     "layout (location = 0) in vec3 aPos;\n"
     "uniform mat4 transform;\n"
@@ -110,6 +111,10 @@ glm::mat4 OpenGLApp::getCamera(){
 }
 
 OpenGLApp app = OpenGLApp(nullptr);
+
+
+//TODO: These should probably be added to OpenGLApp, they are needed by planet.hpp for shape.hpp
+//Deciding how planet and circle interact is tough
 unsigned int shaderProgram;
 float scaleFactor;
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
@@ -215,8 +220,12 @@ int main()
 
     while (!glfwWindowShouldClose(window))
     {
+        //Frametime
         double dt = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - frameEnd).count();
         dt *= 10000000;
+
+        //TODO: Change this to a class function in planets
+        //Apply forces
         for(int i = 0; i < planets.size(); i++){
             Planet *p1 = &planets[i];
             for(int j = i+1; j < planets.size(); j++){
@@ -236,14 +245,6 @@ int main()
                 planets[j].circle->move(p2->velocity.x * scaleFactor * dt, p2->velocity.y*scaleFactor * dt);
             }
         } 
-
-        // if(app.cameraUpdate){
-        //     app.updateCamera();
-        //     for(int i = 0; i < circles.size(); i++){
-        //         circles[i]->applyTransformation(app.getCamera());
-        //     }
-        //     app.cameraUpdate = false;
-        // }
 
         // input
         // -----
