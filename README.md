@@ -97,8 +97,6 @@
 * [![OpenGL][OpenGLIcon]](https://www.opengl.org/)
 * [![GLM](https://img.shields.io/badge/GLM-0.9.9.8-blue)](https://github.com/g-truc/glm)
 * [![CMake](https://img.shields.io/badge/CMake-3.19.3-blue)](https://cmake.org/)
-* [![SFML](https://img.shields.io/badge/SFML-2.5.1-orange)](https://www.sfml-dev.org/)
-* [![STB Image](https://img.shields.io/badge/STB_Image-v2.26-lightgrey)](https://github.com/nothings/stb)
 * [![Math](https://img.shields.io/badge/Math-v1.0-blue)](https://www.math.com/)
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
