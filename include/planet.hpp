@@ -1,6 +1,7 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include "app.hpp"
 #include "shape.hpp"
 #include "vector2d.hpp"
 
@@ -8,8 +9,7 @@
 #define SIM_SIZE 1000.0f
 #define MIN_DISTANCE_THRESHOLD 20.0f
 
-extern unsigned int shaderProgram;
-extern float scaleFactor;
+extern OpenGLApp app;
 
 typedef struct {
     float x;

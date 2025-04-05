@@ -1,17 +1,16 @@
 #include "planet.hpp"
 
-
 Planet::Planet(std::string name, float mass, Vector2D pos, RGB color){
     this->name = name;
     this->mass = mass;
     this->position =  {pos.x, pos.y};
     this->velocity = {0.0f, 0.0f};
 
-    float x = pos.x * scaleFactor;
-    float y = pos.y * scaleFactor;
+    float x = pos.x * app.getScaleFactor();
+    float y = pos.y * app.getScaleFactor();
 
-    float radius = std::sqrt(mass) * scaleFactor;
-    this->circle = new Circle(shaderProgram,{x,y}, color, radius, 64);
+    float radius = std::sqrt(mass) * app.getScaleFactor();
+    this->circle = new Circle(app.getShaderProgram(),{x,y}, color, radius, 64);
 }
 
 Vector2D Planet::calculateGravityForce(const Planet& other){

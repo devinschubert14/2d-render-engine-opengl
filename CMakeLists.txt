@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Add executable
-add_executable(2d-render src/main.cpp src/planet.cpp src/shape.cpp src/utils.cpp)
+add_executable(2d-render src/main.cpp src/planet.cpp src/shape.cpp src/utils.cpp src/app.cpp)
 
 # Find package(s)
 find_package(OpenGL REQUIRED COMPONENTS OpenGL)

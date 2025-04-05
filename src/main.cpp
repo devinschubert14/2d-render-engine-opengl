@@ -10,113 +10,17 @@
 #include <cstring>
 #include <chrono>
 #include <cmath>
+#include <fstream>
+#include <sstream>
 #include "shape.hpp"
 #include "planet.hpp"
+#include "app.hpp"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 
-// settings
-#define ACCURACY 64
-const unsigned int SCR_WIDTH = 1920;
-const unsigned int SCR_HEIGHT = 1080;
-
-//TODO: These should be actual shader files :P
-const char *vertexShaderSource = "#version 330 core\n"
-    "layout (location = 0) in vec3 aPos;\n"
-    "uniform mat4 transform;\n"
-    "void main()\n"
-    "{\n"
-    "   gl_Position = transform * vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-    "}\0";
-const char *fragmentShaderSource = "#version 330 core\n"
-    "uniform vec4 aColor;\n"
-    "out vec4 FragColor;\n"
-    "void main()\n"
-    "{\n"
-    "   FragColor = vec4(aColor);\n"
-    "}\n\0";
-
-typedef struct {
-    float left = -1.0f;
-    float right = 1.0f;
-    float top = 1.0f;
-    float bottom = -1.0f;
-    float near = -1.0f;
-    float far = 1.0f;
-}OrthoMatrix;
-
-class OpenGLApp{
-    private:
-        glm::vec3 eye;
-        glm::mat4 cameraMatrix;
-        float zoomLevel;
-        OrthoMatrix orthoInfo;
-        GLFWwindow* window;
-    public:
-        OpenGLApp(GLFWwindow* window);
-        void moveCamera(float x, float y);
-        void zoomCamera(float zoom);
-        void updateCamera();
-        bool cameraUpdated();
-        glm::mat4 getCamera();
-        bool cameraUpdate;
-};
-
-OpenGLApp::OpenGLApp(GLFWwindow* window){
-    this->window = window;
-    this->eye = glm::vec3(0.0f, 0.0f, 0.0f);
-    this->zoomLevel = 1.0f;
-    cameraUpdate = false;
-    moveCamera(0.0f, 0.0f);
-}
-
-void OpenGLApp::moveCamera(float x, float y){
-    this->eye.x += x;
-    if(this->eye.x > 1.0f){
-       this->eye.x = 1.0f;
-    }
-    if(this->eye.x < -1.0f){
-       this->eye.x = -1.0f;
-    }
-
-    this->eye.y += y;
-    if(this->eye.y > 1.0f){
-       this->eye.y = 1.0f;
-    }
-    if(this->eye.y < -1.0f){
-       this->eye.y = -1.0f;
-    }
-    this->cameraUpdate = true;
-    updateCamera();
-}
-
-void OpenGLApp::zoomCamera(float zoom){
-    this->orthoInfo.left *= zoom;
-    this->orthoInfo.right *= zoom;
-    this->orthoInfo.top *= zoom;
-    this->orthoInfo.bottom *= zoom;
-    this->cameraUpdate = true;
-    updateCamera();
-}
-
-void OpenGLApp::updateCamera(){
-    glm::mat4 projection = glm::ortho(orthoInfo.left, orthoInfo.right, orthoInfo.bottom, orthoInfo.top, orthoInfo.near, orthoInfo.far);
-    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(this->eye.x, this->eye.y, this->eye.z));
-    this->cameraMatrix = projection * view;
-}
-
-glm::mat4 OpenGLApp::getCamera(){
-    return this->cameraMatrix;
-}
-
 OpenGLApp app = OpenGLApp(nullptr);
 
-
-//TODO: These should probably be added to OpenGLApp, they are needed by planet.hpp for shape.hpp
-//Deciding how planet and circle interact is tough
-unsigned int shaderProgram;
-float scaleFactor;
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 int main()
 {
@@ -149,49 +53,17 @@ int main()
         return -1;
     }
 
+    /* Create Application Object */
     app = OpenGLApp(window);
+
     /* Shaders */
-    // vertex shader
-    unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-    // check for shader compile errors
-    int success;
-    char infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+    if(app.parseShaders() == false){
+        exit(1);
     }
-    // fragment shader
-    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-    // check for shader compile errors
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
-    // link shaders
-    shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    // check for linking errors
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-    }
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
 
     /* Scale Factor */
-    scaleFactor = 1.0/SIM_SIZE; //Should be part of OpenGLApp probably
-
+    app.setScaleFactor(1.0/SIM_SIZE);
+    
     /* Default settings */
     RGB backgroundColor = hex2rgb(0x000000);
 
@@ -251,8 +123,8 @@ int main()
 
                 //Move planets
                 //Probably should just be a wrapper around circle->move i.e: planet->move will call circle->move
-                planets[i].circle->move(p1->velocity.x * scaleFactor * dt, p1->velocity.y*scaleFactor * dt);
-                planets[j].circle->move(p2->velocity.x * scaleFactor * dt, p2->velocity.y*scaleFactor * dt);
+                planets[i].circle->move(p1->velocity.x * app.getScaleFactor() * dt, p1->velocity.y*app.getScaleFactor() * dt);
+                planets[j].circle->move(p2->velocity.x * app.getScaleFactor() * dt, p2->velocity.y*app.getScaleFactor() * dt);
             }
         } 
 
@@ -283,7 +155,7 @@ int main()
     // optional: de-allocate all resources once they've outlived their purpose:
     // ------------------------------------------------------------------------
     //glDeleteBuffers(1, &EBO);
-    glDeleteProgram(shaderProgram);
+    glDeleteProgram(app.getShaderProgram());
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
